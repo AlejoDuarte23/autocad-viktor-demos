@@ -7,6 +7,7 @@ from typing import Any, Iterable, Sequence
 import viktor as vkt
 from viktor.external.autocad import AcRegenType
 
+from drawing_log import DrawingRunSummary
 from foundation_design import DesignProject, FootingDesign, FootingTypeSummary
 
 
@@ -36,13 +37,15 @@ def _layer_name(settings: DrawingSettings, suffix: str) -> str:
     return f"{settings.layer_prefix}-{suffix}"
 
 
-def _ensure_layer(layers: Any, name: str, color: int) -> Any:
+def _ensure_layer(layers: Any, name: str, color: int) -> tuple[Any, bool]:
     try:
         layer = layers.Add(name)
+        created = True
     except vkt.errors.ExecutionError:
         layer = layers.Item(name)
+        created = False
     layer.Color = color
-    return layer
+    return layer, created
 
 
 def _add_line(
@@ -518,7 +521,9 @@ def _draw_type_details(
         )
 
 
-def draw_foundation_plan(acad: Any, project: DesignProject, settings: DrawingSettings) -> None:
+def draw_foundation_plan(
+    acad: Any, project: DesignProject, settings: DrawingSettings
+) -> DrawingRunSummary:
     """Draw the foundation plan and unique reinforcement plans in the open AutoCAD drawing."""
     if settings.units_per_metre <= 0:
         raise ValueError("AutoCAD units per metre must be greater than zero.")
@@ -528,10 +533,32 @@ def draw_foundation_plan(acad: Any, project: DesignProject, settings: DrawingSet
     document = acad.ActiveDocument
     model_space = document.ModelSpace
     layers = document.Layers
+    document_name = str(document.Name())
+    entity_count_before = int(model_space.Count())
 
+    layers_ready: list[str] = []
+    layers_created: list[str] = []
     for suffix, color in LAYER_COLORS.items():
-        _ensure_layer(layers, _layer_name(settings, suffix), color)
+        layer_name = _layer_name(settings, suffix)
+        _, created = _ensure_layer(layers, layer_name, color)
+        layers_ready.append(layer_name)
+        if created:
+            layers_created.append(layer_name)
 
     extents = _draw_grid_and_plan(model_space, project, settings)
     _draw_type_details(model_space, project, settings, extents)
     document.Regen(AcRegenType.acAllViewports)
+    entity_count_after = int(model_space.Count())
+
+    return DrawingRunSummary(
+        document_name=document_name,
+        entities_created=entity_count_after - entity_count_before,
+        layers_ready=tuple(layers_ready),
+        layers_created=tuple(layers_created),
+        x_grid_count=len(
+            _cluster_coordinates((node.x_m for node in project.nodes), settings.grid_tolerance_m)
+        ),
+        y_grid_count=len(
+            _cluster_coordinates((node.y_m for node in project.nodes), settings.grid_tolerance_m)
+        ),
+    )

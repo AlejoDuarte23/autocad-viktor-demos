@@ -3,6 +3,7 @@ from __future__ import annotations
 import viktor as vkt
 
 from autocad_drawing import DrawingSettings, draw_foundation_plan
+from drawing_log import build_drawing_log
 from foundation_design import DesignInputError, DesignSettings, DesignProject, design_project
 
 
@@ -31,8 +32,8 @@ class Parametrization(vkt.Parametrization):
         "Enter support-center coordinates and matching reaction combinations. Service rows size each "
         "centered footing for allowable soil pressure and full contact; Ultimate rows size the preliminary "
         "thickness and bottom reinforcement. The summary view groups identical designs as F1, F2, and so on. "
-        "Open the target drawing in AutoCAD before pressing the action button. The app draws in model space "
-        "on `VKT-FDN-*` layers and does not save the DWG.\n\n"
+        "Open the target drawing in AutoCAD before pressing the download button. The app draws in model space "
+        "on `VKT-FDN-*` layers, then downloads a creation log. It does not save the DWG.\n\n"
         "**Engineering scope:** preliminary centered isolated footings only. A licensed engineer must confirm "
         "the governing design code, load combinations, geotechnical assumptions, sliding, overturning, "
         "settlement, development length, dowels, cover, edge conditions, and construction detailing."
@@ -134,10 +135,9 @@ class Parametrization(vkt.Parametrization):
         description="Coordinates within this distance are assigned to the same inferred gridline.",
         flex=25,
     )
-    calculate_and_draw = vkt.ActionButton(
+    calculate_and_draw = vkt.DownloadButton(
         "Calculate and generate AutoCAD drawing",
         method="calculate_and_draw_in_autocad",
-        longpoll=True,
         flex=75,
     )
 
@@ -227,7 +227,7 @@ class Controller(vkt.Controller):
 
         try:
             with vkt.autocad.attach(timeout=180) as acad:
-                draw_foundation_plan(acad, project, drawing_settings)
+                run_summary = draw_foundation_plan(acad, project, drawing_settings)
         except vkt.errors.WorkerSessionAttachError as err:
             if err.reason == "error_attach_no_instance":
                 raise vkt.UserError(
@@ -252,3 +252,8 @@ class Controller(vkt.Controller):
             raise vkt.UserError(
                 "Drawing in AutoCAD timed out. Let AutoCAD finish its current work and try again."
             ) from err
+
+        return vkt.DownloadResult(
+            build_drawing_log(project, run_summary),
+            "autocad-foundation-drawing-log.txt",
+        )

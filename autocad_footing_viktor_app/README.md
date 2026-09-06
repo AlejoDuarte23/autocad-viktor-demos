@@ -16,7 +16,8 @@ This proof-of-concept app accepts support-node coordinates and service/ultimate 
 3. In VIKTOR Desktop, add and start a personal AutoCAD worker.
 4. Open the target DWG in AutoCAD.
 5. Replace the sample tables, review the summary, and press **Calculate and generate AutoCAD drawing**.
-6. Save the DWG from AutoCAD after reviewing the result.
+6. Download and review the creation log returned by the app.
+7. Save the DWG from AutoCAD after reviewing the result.
 
 ## Input contract
 

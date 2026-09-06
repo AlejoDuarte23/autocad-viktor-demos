@@ -4,11 +4,12 @@ This app attaches to the ETABS instance already open on a personal VIKTOR worker
 
 ## Selection rule
 
-- Output-case names are assigned to Service or Ultimate using configurable, case-insensitive text filters.
+- Response combinations are loaded directly from ETABS; individual load cases are ignored.
+- A combination is classified as Ultimate when any absolute load factor is greater than 1.0. Otherwise it is classified as Service.
 - The row with the greatest compressive `FZ` is selected for each support and limit state.
 - If two rows have the same compression, the larger `sqrt(MX² + MY²)` governs.
 - ETABS display units are temporarily changed to kN, m, C for extraction and restored afterward.
-- Compression is exported as positive `P`; `MX` and `MY` retain their ETABS signs.
+- The compression sign is detected from a gravity/dead-load case when available, then compression is exported as positive `P`. `MX` and `MY` retain their ETABS signs.
 
 ## Views
 
@@ -23,5 +24,4 @@ Both VIKTOR table views provide CSV download.
 2. Run `viktor-cli start` from this folder.
 3. Start a personal ETABS worker in VIKTOR Desktop.
 4. Open an ETABS model and run its analysis.
-5. Configure the Service and Ultimate case-name filters to match the model.
-6. Open either table view and press **Read from ETABS**.
+5. Open either table view and press **Read from ETABS**.

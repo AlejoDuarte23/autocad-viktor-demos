@@ -120,9 +120,32 @@ def _extract_reactions(sap: Any) -> dict[str, Any]:
             f"Coordinates were unavailable for these reacting ETABS points: {names}."
         )
 
+    combo_list_result = sap.RespCombo.GetNameList(0, [])
+    if not isinstance(combo_list_result, (list, tuple)) or len(combo_list_result) != 3:
+        raise vkt.UserError("ETABS returned an unexpected response-combination list.")
+    combo_count, combo_names, return_code = combo_list_result
+    check(return_code, "RespCombo.GetNameList")
+
+    combination_factors: dict[str, tuple[float, ...]] = {}
+    for combo_name in list(combo_names[: int(combo_count)]):
+        combo_result = sap.RespCombo.GetCaseList(str(combo_name), 0, [], [], [])
+        if not isinstance(combo_result, (list, tuple)) or len(combo_result) != 5:
+            raise vkt.UserError(
+                f"ETABS returned an unexpected definition for response combination '{combo_name}'."
+            )
+        item_count, _item_types, _item_names, scale_factors, return_code = combo_result
+        check(return_code, f"RespCombo.GetCaseList({combo_name!r})")
+        combination_factors[str(combo_name)] = tuple(
+            float(value) for value in list(scale_factors[: int(item_count)])
+        )
+
+    if not combination_factors:
+        raise vkt.UserError("The ETABS model does not contain any response combinations.")
+
     return {
         "rows": enriched,
         "load_cases": sorted({row["OutputCase"] for row in enriched}),
+        "combination_factors": combination_factors,
     }
 
 

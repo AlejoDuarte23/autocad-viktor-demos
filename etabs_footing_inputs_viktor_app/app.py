@@ -20,27 +20,9 @@ class Parametrization(vkt.Parametrization):
     inputs.intro = vkt.Text(
         "# ETABS → footing inputs\n"
         "Open an analyzed ETABS model on the personal worker. The app reads joint reactions and support "
-        "coordinates, then selects the maximum-compression service and ultimate row for each support. "
+        "coordinates, loads ETABS response combinations, and selects the maximum-compression Service and "
+        "Ultimate row for each support. Limit states and the FZ compression sign are detected automatically. "
         "Both tables can be downloaded as CSV from the table view."
-    )
-    inputs.service_case_filters = vkt.TextField(
-        "Service combination filters",
-        default="SVC, SERVICE",
-        description="Comma-separated, case-insensitive text fragments matched against ETABS output-case names.",
-        flex=50,
-    )
-    inputs.ultimate_case_filters = vkt.TextField(
-        "Ultimate combination filters",
-        default="ULS, ULTIMATE, STRENGTH",
-        description="Comma-separated, case-insensitive text fragments matched against ETABS output-case names.",
-        flex=50,
-    )
-    inputs.compression_sign = vkt.OptionField(
-        "Compression sign in ETABS FZ",
-        options=["Negative FZ", "Positive FZ"],
-        default="Negative FZ",
-        description="The selected compression reaction is exported as positive P for the footing app.",
-        flex=50,
     )
     inputs.column_x_mm = vkt.NumberField(
         "Default column X",
@@ -99,9 +81,7 @@ class Controller(vkt.Controller):
         try:
             return select_critical_reactions(
                 data["rows"],
-                params.inputs.service_case_filters,
-                params.inputs.ultimate_case_filters,
-                compression_is_negative=params.inputs.compression_sign == "Negative FZ",
+                data["combination_factors"],
             )
         except CriticalCombinationError as exc:
             raise vkt.UserError(str(exc)) from exc
@@ -110,7 +90,7 @@ class Controller(vkt.Controller):
         "Critical combinations",
         duration_guess=30,
         update_label="Read from ETABS",
-        description="One maximum-compression service and ultimate combination per support, with coordinates.",
+        description="ETABS response combinations only: one critical Service and Ultimate row per support.",
     )
     def critical_combinations(self, params, **kwargs):
         critical = self._critical_rows(params)

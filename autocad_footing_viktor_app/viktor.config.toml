@@ -1,0 +1,6 @@
+app_type = "simple"
+python_version = "3.12"
+registered_name = "autocad-footing-designer"
+worker_integrations = [
+    "autocad",
+]
